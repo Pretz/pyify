@@ -1,0 +1,26 @@
+What is pyify?
+--------------
+
+pyify is a command-line, recursive audio transcoding tool that is convenient
+for mass conversion of music for portable audio devices or CD archival.
+
+But what does it do anyway?
+
+- Conversion between popular formats: FLAC, WAV, Ogg, and MP3 while preserving
+  metadata, while applicable
+- Recurses into directories and preserves directory structure at the
+  destination path
+- Copies album art into destination
+- Can be extended with additional format plugins
+- Can take advantage of multiple cores with a built-in jobserver.
+
+The actual conversions are done by the command-line decoders and encoders
+for the respective formats. Pyify handles directory creation, metadata mapping,
+job management, and file renaming directly.
+
+pyify tries to mostly remain faithful to the output and command-line calling
+convention of the original ify, which was written in Perl. It is eventually
+meant to surpass ify in elegance and extensibility.
+
+			-- Joshua Kwan <joshk@triplehelix.org>
+			   Brandon Lewis <brandon_lewis@berkeley.edu>
