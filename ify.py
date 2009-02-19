@@ -67,17 +67,18 @@ def run_encode_queue():
 				process_audio_file_real(*queue.pop(0))
 
 def process_audio_file(from_path, to_path):
-	# [6] is filesize in bytes
-	if os.path.isfile(to_path) and os.stat(to_path)[6] > 0 and not prefs["force"]:
-		ify_print("[up-to-date] %s", to_path)
-		return
+	if not prefs["force"]:
+		# [6] is filesize in bytes
+		if os.path.isfile(to_path) and os.stat(to_path)[6] > 0:
+			ify_print("[up-to-date] %s", to_path)
+			return
 
-	old_ext = os.path.splitext(from_path)[1][1:]
+		old_ext = os.path.splitext(from_path)[1][1:]
 
-	if old_ext == prefs["format"]:
-		ify_print("[copy] %s", from_path)
-		shutil.copyfile(from_path, to_path)
-		return
+		if old_ext == prefs["format"]:
+			ify_print("[copy] %s", from_path)
+			shutil.copyfile(from_path, to_path)
+			return
 
 	queue.append([from_path, to_path])
 
