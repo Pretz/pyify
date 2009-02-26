@@ -46,7 +46,7 @@ def getAudioStream(path):
 	return o
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
-	encode_command = ["lame", "-V5", "--quiet", "--vbr-new", '-', destination]
+	encode_command = ["lame", "-V2", "--quiet", "--vbr-new", '-', destination]
 
 	pid = forkexec(encode_command, file_stdin=input_stream)
 	input_stream.close()
