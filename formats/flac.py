@@ -13,7 +13,7 @@ format = "flac"
 # return a dictionary file of the metadata
 # key names are based on output of vorbiscomment
 def getMetadata(path):
-   command = ["metaflac", "--export-tags-to=-", path]
+   command = ["metaflac", "--no-utf8-convert", "--export-tags-to=-", path]
    p = subprocess.Popen(command, stdout=subprocess.PIPE)
 
    tags = util.tagdict(p.stdout.readlines())
