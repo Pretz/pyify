@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import time
 import os
@@ -13,13 +14,18 @@ import shutil
 # Local imports into current namespace
 from util import *
 
+SKIP_DOTFILES = True # If true, skips directories and files beginning with a dot
+
 # XXX: Global.
 FORMATS = dict()
 
 def process_file(path):
    basename, ext = os.path.splitext(path)
    basename = os.path.basename(path)
-   ext = ext[1:]
+   if SKIP_DOTFILES and basename.startswith("."):
+      ify_print("Skipping %s", basename)
+      return
+   ext = ext[1:].lower()
    if FORMATS.has_key(ext):
       # Be more vocal about this because the user passed the file in
       # explicitly, there's more of a chance that a botched --convert-formats
@@ -35,10 +41,6 @@ def process_file(path):
       process_playlist(path)
    else:
       ify_print("Error, unsupported file format \"%s\"", ext)
-
-queue = list()
-jobs_running = 0 # XXX
-encoder_pids = dict() # XXX
 
 def run_encode_queue():
    global jobs_running, encoder_pids
@@ -133,6 +135,9 @@ def process_playlist(path):
 
 def process_dir(path, prefix=""):
    containing_dir = os.path.basename(path) # current toplevel path
+   if SKIP_DOTFILES and containing_dir.startswith("."):
+      ify_print("Skipping %s", path)
+   return;
    target_dir = os.path.join(prefs["destination"], prefix, containing_dir)
 
    ify_print("[directory] %s" % target_dir)
@@ -158,6 +163,8 @@ def process_dir(path, prefix=""):
          process_dir(file_fullpath, os.path.join(prefix, containing_dir))
       elif os.path.isfile(file_fullpath):
          (basename, ext) = os.path.splitext(file)
+         if SKIP_DOTFILES and basename.startswith("."):
+            continue
          if ext[1:] in FORMATS and check_want_convert(ext[1:]):
             process_audio_file(file_fullpath, os.path.join(prefs["destination"], prefix, containing_dir, os.path.splitext(file)[0] + "." + prefs["format"]))
 
