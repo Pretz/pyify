@@ -16,7 +16,7 @@ def getMetadata(path):
 	except:
 		sys.stderr.write("Warning: no ID3 support, please install python-eyed3")
 		return dict()
-	
+
 	tag = eyeD3.Tag()
 	tag.link(path)
 
@@ -46,7 +46,7 @@ def getAudioStream(path):
 	return o
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
-	encode_command = ["lame", "-V2", "--quiet", "--vbr-new", '-', destination]
+	encode_command = ["lame", "-V0", "--quiet", "--vbr-new", '-', destination]
 
 	pid = forkexec(encode_command, file_stdin=input_stream)
 	input_stream.close()
