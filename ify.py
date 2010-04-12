@@ -163,7 +163,7 @@ def process(arg):
 		ify_print("Error: unrecognized argument \"%s\"", path)
 
 def check_want_convert(ext):
-	if prefs["convert_formats"] == None: return True
+	if prefs["convert_formats"] is None: return True
 	elif ext.lower() in prefs["convert_formats"]: return True
 	else: return False
 
@@ -177,7 +177,7 @@ def usage():
 		-o FMT or --format=FMT        convert files to this format
 		-f or --force                 convert even if output file is already
 	                                  present
-		-j N                          runs N encoding jobs at once 
+		-j N                          runs N encoding jobs at once
 		-q or --quiet                 don't print any output
 		--delete                      delete originals after converting
 		--dry-run                     don't do anything, just print actions"""

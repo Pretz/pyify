@@ -1,7 +1,7 @@
-from os import popen2, fork, wait, execvp, pipe, dup2, setpgrp, environ
+from os import fork, wait, execvp, pipe, dup2, setpgrp, environ
 import os.path
 import sys
-import md5
+import hashlib
 
 class MissingProgramError(Exception):
 	def __init__(self, value):
@@ -17,7 +17,7 @@ def getchecksum(filename):
 	   @param filename: the absolute path to the file
 	   @return: string containing the checksum
 	"""
-	checksum = md5.new()
+	checksum = hashlib.new("md5")
 	fileobj = file(filename, 'rb')
 	try:
 		while True:
@@ -28,6 +28,20 @@ def getchecksum(filename):
 	finally:
 		fileobj.close()
 	return checksum.hexdigest()
+
+# Turn an iterable of lines like
+# ARTIST=Foo
+# ALBUM=Bar
+# into a dict {'ARTIST':'Foo', 'ALBUM':'Bar'}
+# It does unicode for the values, and normalizes the LHS (tag name) to
+# uppercase.
+def tagdict(lines):
+   ret = {}
+   for line in lines:
+      (key, value) = line.split('=', 1)
+      if key is not None and value is not None:
+         ret[key.upper()] = unicode(value, 'utf-8')
+   return ret
 
 # execute child process which will optionally use
 # either stdin as it's standard input or stdout as its

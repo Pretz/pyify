@@ -2,7 +2,7 @@
 
 import os
 import string
-import popen2
+import subprocess
 #from util import copyfileobj
 from util import forkexec, copyfileobj
 
@@ -17,19 +17,24 @@ def getMetadata(path):
 # return open file object with audio stream
 def getAudioStream(path):
 	subargv = ["shorten", "-x", path, "-"]
-	(o, i, e) = os.popen3(subargv, 'b')
-	o.close()
-	e.close()
-	return i
+	p = subprocess.Popen(subargv,
+	                     stdout=subprocess.PIPE,
+	                     stderr=subprocess.PIPE,
+	                     stdin=subprocess.PIPE)
+
+	p.stderr.close()
+	p.stdin.close()
+
+	return p.stdout
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
-	# metadata is ignored because monkey's audio sucks
+	# metadata is ignored because Shorten has no metadata.
 	encode_command = ["shorten", "-", destination]
-	
+
 	pid = forkexec(encode_command, file_stdin=input_stream)
 	input_stream.close()
 
 	return pid
 
 def tagOutputFile(path, tags):
-  return
+	return

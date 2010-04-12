@@ -2,11 +2,11 @@
 
 import os
 import string
-import popen2
 import sys
+import subprocess
 from util import forkexec, copyfileobj
 
-required = { "encode": "lame", "decode": "mpg123" }
+required = { "encode": "lame", "decode": "mpg321" }
 format = "mp3"
 
 # return a dictionary file of the metadata
@@ -25,25 +25,23 @@ def getMetadata(path):
 		'TITLE': tag.getTitle(),
 		'DATE': tag.getYear() }
 
-	if tag.getGenre() != None:
-		print tag.getGenre().getName()
+	if tag.getGenre() is not None:
 		tags['GENRE'] = tag.getGenre().getName()
 
-	if tag.getTrackNum() != None:
+	if tag.getTrackNum()[0] is not None:
 		tags['TRACKNUMBER'] = str(tag.getTrackNum()[0])
 
-	for tag in tags:
-		if tag[1] == "" or tag[1] == None:
-			del tags[tag[0]]
+	for name in tags.keys():
+		if tags[name] is None or len(tags[name]) == 0:
+			del tags[name]
 
 	return tags
 
 # return open file object with audio stream
 def getAudioStream(path):
-	subargv = ["mpg123", "-q", "-s", path]
-	(i, o) = os.popen2(subargv, 'b')
-	i.close()
-	return o
+	subargv = ["mpg321", "-q", "-w", "-", path]
+	p = subprocess.Popen(subargv, stdout=subprocess.PIPE)
+	return p.stdout
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
 	encode_command = ["lame", "-V0", "--quiet", "--vbr-new", '-', destination]
@@ -54,8 +52,8 @@ def encodeAudioStream(input_stream, destination, metadata=dict()):
 	return pid
 
 def tagOutputFile(path, tags):
-	tag_bind = { 'ARTIST': 'TPE1', 
-				 'TITLE': 'TIT2', 
+	tag_bind = { 'ARTIST': 'TPE1',
+				 'TITLE': 'TIT2',
 				 'ALBUM': 'TALB',
 				 'DATE': 'TYER',
 				 'TRACKNUMBER': 'TRCK' }
