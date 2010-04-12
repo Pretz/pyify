@@ -13,31 +13,31 @@ format = "flac"
 # return a dictionary file of the metadata
 # key names are based on output of vorbiscomment
 def getMetadata(path):
-	command = ["metaflac", "--export-tags-to=-", path]
-	p = subprocess.Popen(command, stdout=subprocess.PIPE)
+   command = ["metaflac", "--export-tags-to=-", path]
+   p = subprocess.Popen(command, stdout=subprocess.PIPE)
 
-	tags = util.tagdict(p.stdout.readlines())
-	p.wait()
+   tags = util.tagdict(p.stdout.readlines())
+   p.wait()
 
-	return tags
+   return tags
 
 # return open file object with audio stream
 def getAudioStream(path):
-	subargv = ["flac", "-s", "-d", "-c", path]
-	p = subprocess.Popen(subargv,
-								stdout=subprocess.PIPE)
+   subargv = ["flac", "-s", "-d", "-c", path]
+   p = subprocess.Popen(subargv,
+                        stdout=subprocess.PIPE)
 
-	return p.stdout
+   return p.stdout
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
-	encode_command = ["flac", "-f", "-s", "-8", "-", "-o", destination]
-	for x in metadata.items():
-		encode_command.extend(["-T", string.join(x, "=")])
+   encode_command = ["flac", "-f", "-s", "-8", "-", "-o", destination]
+   for x in metadata.items():
+      encode_command.extend(["-T", string.join(x, "=")])
 
-	pid = forkexec(encode_command, file_stdin=input_stream)
-	input_stream.close()
+   pid = forkexec(encode_command, file_stdin=input_stream)
+   input_stream.close()
 
-	return pid
+   return pid
 
 def tagOutputFile(path, tags):
   return
