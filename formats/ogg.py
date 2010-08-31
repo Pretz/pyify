@@ -15,7 +15,7 @@ format = "ogg"
 # key names are based on output of vorbiscomment
 def getMetadata(path):
    command = ["vorbiscomment", "-l", path]
-   p = subprocess.Popen(command, stdout=subprocess.PIPE,
+   p = subprocess.Popen(command, stdout=subprocess.PIPE)
    tags = util.tagdict(p.stdout.readlines())
    p.wait()
 

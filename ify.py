@@ -27,7 +27,7 @@ def process_file(path):
          return 1
 
       process_audio_file(path, os.path.join(prefs["destination"],
-               os.path.splitext(basename)[0] + "." + prefs["format"]))
+                         os.path.splitext(basename)[0] + "." + prefs["format"]))
    elif ext == "m3u":
       process_playlist(path)
    else:
