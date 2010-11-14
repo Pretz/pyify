@@ -4,7 +4,7 @@ import os
 import string
 import sys
 import subprocess
-from util import forkexec, copyfileobj
+from util import forkexec
 
 required = { "encode": "lame", "decode": "mpg321" }
 format = "mp3"

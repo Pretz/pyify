@@ -4,10 +4,7 @@ import sys
 import hashlib
 
 class MissingProgramError(Exception):
-   def __init__(self, value):
-      self.value = value
-   def __str__(self):
-      return repr(self.value)
+   pass
 
 # Yoinked from Christopher Lenz at
 # http://bitten.cmlenz.net/browser/trunk/bitten/util/md5sum.py
@@ -38,7 +35,7 @@ def getchecksum(filename):
 def tagdict(lines):
    ret = {}
    for line in lines:
-      (key, value) = line.split('=', 1)
+      (key, value) = line.rstrip().split('=', 1)
       if key is not None and value is not None:
          ret[key.upper()] = unicode(value, 'utf-8')
    return ret

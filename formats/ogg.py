@@ -3,7 +3,7 @@
 import os
 import string
 import subprocess
-from util import copyfileobj, forkexec, tagdict
+import util
 
 required = { "encode": "oggenc",
              "decode": "ogg123",
@@ -35,7 +35,7 @@ def encodeAudioStream(input_stream, destination, metadata=dict()):
       encode_command.extend(["-c"])
       encode_command.extend([tag])
 
-   pid = forkexec(encode_command, file_stdin=input_stream)
+   pid = util.forkexec(encode_command, file_stdin=input_stream)
    input_stream.close()
 
    return pid

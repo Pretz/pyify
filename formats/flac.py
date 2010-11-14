@@ -3,7 +3,7 @@
 import os
 import string
 import subprocess
-from util import forkexec, tagdict
+import util
 
 required = { "encode": "flac",
              "decode": "flac",
@@ -34,7 +34,7 @@ def encodeAudioStream(input_stream, destination, metadata=dict()):
    for x in metadata.items():
       encode_command.extend(["-T", string.join(x, "=")])
 
-   pid = forkexec(encode_command, file_stdin=input_stream)
+   pid = util.forkexec(encode_command, file_stdin=input_stream)
    input_stream.close()
 
    return pid
