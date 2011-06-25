@@ -269,7 +269,7 @@ try:
          raise MissingProgramError(req['encode'])
 
    except MissingProgramError, error:
-      print "Missing required external program: %s" % error.value
+      print "Missing required external program: %s" % error
       sys.exit(1)
    except ImportError, error:
       print "Import error has occured: %r" % error.args
