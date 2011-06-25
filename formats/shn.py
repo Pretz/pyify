@@ -3,10 +3,9 @@
 import os
 import string
 import subprocess
-#from util import copyfileobj
 from util import forkexec, copyfileobj
 
-required = { "encode": "shorten", "decode": "shorten" }
+required = { "encode": ["shorten"], "decode": ["shorten"] }
 format = "shn"
 
 # return a dictionary file of the metadata

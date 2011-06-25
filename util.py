@@ -6,6 +6,9 @@ import hashlib
 class MissingProgramError(Exception):
    pass
 
+class MissingModuleError(Exception):
+   pass
+
 # Yoinked from Christopher Lenz at
 # http://bitten.cmlenz.net/browser/trunk/bitten/util/md5sum.py
 def getchecksum(filename):

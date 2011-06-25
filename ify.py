@@ -13,11 +13,14 @@ import shutil
 # Local imports into current namespace
 from util import *
 
+# XXX: Global.
+FORMATS = dict()
+
 def process_file(path):
    basename, ext = os.path.splitext(path)
    basename = os.path.basename(path)
    ext = ext[1:]
-   if formats.has_key(ext):
+   if FORMATS.has_key(ext):
       # Be more vocal about this because the user passed the file in
       # explicitly, there's more of a chance that a botched --convert-formats
       # arg was at fault.
@@ -55,7 +58,7 @@ def run_encode_queue():
 
       if pid in encoder_pids:
          # Run the tag hook.
-         encode_plugin = formats[prefs["format"]]
+         encode_plugin = FORMATS[prefs["format"]]
          encode_plugin.tagOutputFile(*encoder_pids[pid])
 
          del encoder_pids[pid] # and carry on
@@ -97,18 +100,22 @@ def process_audio_file_real(from_path, to_path):
 
    ify_print("[%s->%s] %s", old_ext, prefs["format"], from_path)
 
-   decode_plugin = formats[old_ext]
-   try:
-      if "decode" in decode_plugin.required and not in_path(decode_plugin.required["decode"]):
-         raise MissingProgramError(decode_plugin.required["decode"])
-      if "gettags" in decode_plugin.required and not in_path(decode_plugin.required["gettags"]):
-         raise MissingProgramError(decode_plugin.required["gettags"])
-   except MissingProgramError, error:
-      print "Missing required external program: %s" % error.value
-      sys.exit(1)
+   decode_plugin = FORMATS[old_ext]
+   for toolCheck in ('decode', 'gettags'):
+      if toolCheck in decode_plugin.required:
+         for tool in decode_plugin.required[toolCheck]:
+            if not in_path(tool):
+               raise MissingProgramError(tool)
+   for moduleCheck in ('decode_module', 'gettags_module'):
+      if moduleCheck in decode_plugin.required:
+         for module in decode_plugin.required[moduleCheck]:
+            try:
+               __import__(module)
+            except ImportError:
+               raise MissingModuleError(module)
 
    if not prefs["dry_run"]:
-      encode_plugin = formats[prefs["format"]]
+      encode_plugin = FORMATS[prefs["format"]]
 
       tags  = decode_plugin.getMetadata(from_path)
       audio = decode_plugin.getAudioStream(from_path)
@@ -151,7 +158,7 @@ def process_dir(path, prefix=""):
          process_dir(file_fullpath, os.path.join(prefix, containing_dir))
       elif os.path.isfile(file_fullpath):
          (basename, ext) = os.path.splitext(file)
-         if ext[1:] in formats and check_want_convert(ext[1:]):
+         if ext[1:] in FORMATS and check_want_convert(ext[1:]):
             process_audio_file(file_fullpath, os.path.join(prefs["destination"], prefix, containing_dir, os.path.splitext(file)[0] + "." + prefs["format"]))
 
 def process(arg):
@@ -195,20 +202,20 @@ prefs = { 'destination': os.getcwd(),
                 'plugin_dir': os.path.join(sys.path[0], "formats"),
                 'concurrency': 1 }
 
-try:
+def main(argv):
    shortargs = "hd:o:fqj:"
    longargs  = ["help",
                 "destination=",
-             #changed from convert-formats
-             "convert-formats=",
-             "format=",
-             "force",
-             "quiet",
-             "delete",
-             "dry-run",
-             "plugin-dir="]
+                "convert-formats=",
+                "format=",
+                "force",
+                "quiet",
+                "delete",
+                "dry-run",
+                "plugin-dir="]
 
-   opts, args = getopt.gnu_getopt(sys.argv[1:], shortargs, longargs)
+   opts, args = getopt.gnu_getopt(argv[1:], shortargs, longargs)
+
    for (option, arg) in opts:
       if option == "--help" or option == "-h":
          usage()
@@ -240,52 +247,69 @@ try:
    elif False in [os.path.exists(file) for file in args]:
       raise getopt.GetoptError("One or more input files does not exist!")
 
-   # build formats data structure
-   formats = dict()
+   # build FORMATS data structure
+   for path in os.listdir(prefs["plugin_dir"]):
+      path = os.path.join(prefs["plugin_dir"], path)
+      if os.path.isfile(path):
+         name, ext = os.path.splitext(os.path.basename(path))
+         file = open(path, "r")
+         if ext == ".py":
+            # ify_print ("Loading module %s...", name)
+            plugin = imp.load_source(name, path, file)
+            FORMATS[plugin.format] = plugin
+         elif ext == ".pyc":
+            pass
+         else:
+            ify_print("Can't load plugin %s, bad suffix \"%s\"", path,
+                  ext)
+         file.close()
+   if not prefs['format'] in FORMATS:
+      raise getopt.GetoptError("Format must be one of: %s" %
+            ', '.join(FORMATS.keys()))
+   # Now that format is validated, check that required programs are
+   # available for encoding
+   req = FORMATS[prefs['format']].required
 
-   try:
-      for path in os.listdir(prefs["plugin_dir"]):
-         path = os.path.join(prefs["plugin_dir"], path)
-         if os.path.isfile(path):
-            name, ext = os.path.splitext(os.path.basename(path))
-            file = open(path, "r")
-            if ext == ".py":
-               # ify_print ("Loading module %s...", name)
-               plugin = imp.load_source(name, path, file)
-               formats[plugin.format] = plugin
-            elif ext == ".pyc":
-               pass
-            else:
-               ify_print("Can't load plugin %s, bad suffix \"%s\"", path,
-                     ext)
-            file.close()
-      if not prefs['format'] in formats:
-         raise getopt.GetoptError("Format must be one of {%s}" %
-               string.join(formats.keys()))
-      # Now that format is validated, check that required programs are
-      # available for encoding
-      req = formats[prefs['format']].required
-      if 'encode' in req and not in_path(req['encode']):
-         raise MissingProgramError(req['encode'])
+   for toolCheck in ('encode',):
+      if toolCheck in req:
+         for tool in req[toolCheck]:
+            if not in_path(tool):
+               raise MissingProgramError(tool)
+   for moduleCheck in ('encode_module',):
+      if moduleCheck in req:
+         for module in req[moduleCheck]:
+            try:
+               __import__(module)
+            except ImportError:
+               raise MissingModuleError(module)
 
-   except MissingProgramError, error:
-      print "Missing required external program: %s" % error
+   for arg in args:
+      process(arg)
+
+   try: run_encode_queue()
+   except KeyboardInterrupt:
+      for job in encoder_pids.values():
+         print "[deleted] %s" % job[0]
+         os.unlink(job[0])
       sys.exit(1)
-   except ImportError, error:
-      print "Import error has occured: %r" % error.args
 
-except getopt.GetoptError, error:
-   print "Error parsing arguments: %s %s\n" % (error.opt, error.msg)
-   print "List of accepted arguments:"
-   usage()
-   sys.exit(1)
+if __name__ == '__main__':
+   try:
+      main(sys.argv)
+   except getopt.GetoptError, error:
+      if error.opt:
+         print "Error parsing option %s: %s" % (error.opt, error.msg)
+      else: 
+         print "Error reading command line options: %s\n" % error.msg
 
-for arg in args:
-   process(arg)
-
-try: run_encode_queue()
-except KeyboardInterrupt:
-   for job in encoder_pids.values():
-      print "[deleted] %s" % job[0]
-      os.unlink(job[0])
-   sys.exit(1)
+      print "List of accepted arguments:"
+      usage()
+      sys.exit(1)
+   except MissingModuleError, module:
+      print 'Missing Python module: %s' % module
+      print 'Install it through your package manager and try again.'
+      sys.exit(1)
+   except MissingProgramError, prog:
+      print 'Missing encode/decode program: %s' % prog
+      print 'Install it through your package manager and try again.'
+      sys.exit(1)

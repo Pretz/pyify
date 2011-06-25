@@ -5,9 +5,11 @@ import string
 import subprocess
 import util
 
-required = { "encode": "oggenc",
-             "decode": "ogg123",
-             "gettags": "vorbiscomment" }
+required = {
+  "encode": ["oggenc"],
+  "decode": ["ogg123"],
+  "gettags": ["vorbiscomment"],
+}
 
 format = "ogg"
 

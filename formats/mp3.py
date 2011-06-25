@@ -6,16 +6,18 @@ import sys
 import subprocess
 from util import forkexec
 
-required = { "encode": "lame", "decode": "mpg321" }
+required = {
+  "encode": ["lame"],
+  "decode": ["mpg321"],
+  "encode_module": ["eyeD3"],
+}
+
 format = "mp3"
 
 # return a dictionary file of the metadata
 # key names are based on output of vorbiscomment
 def getMetadata(path):
-   try: import eyeD3
-   except:
-      sys.stderr.write("Warning: no ID3 support, please install python-eyed3")
-      return dict()
+   import eyeD3
 
    tag = eyeD3.Tag()
    tag.link(path)
@@ -52,16 +54,15 @@ def encodeAudioStream(input_stream, destination, metadata=dict()):
    return pid
 
 def tagOutputFile(path, tags):
-   tag_bind = { 'ARTIST': 'TPE1',
-             'TITLE': 'TIT2',
-             'ALBUM': 'TALB',
-             'DATE': 'TYER',
-             'TRACKNUMBER': 'TRCK' }
+   import eyeD3
 
-   try: import eyeD3
-   except:
-      print "Can't tag! Install python-eyed3."
-      return
+   tag_bind = {
+      'ARTIST': 'TPE1',
+      'TITLE': 'TIT2',
+      'ALBUM': 'TALB',
+      'DATE': 'TYER',
+      'TRACKNUMBER': 'TRCK'
+   }
 
    tag = eyeD3.Tag()
    tag.link(path)

@@ -5,9 +5,12 @@ import string
 import subprocess
 import util
 
-required = { "encode": "flac",
-             "decode": "flac",
-             "gettags": "metaflac" }
+required = {
+   "encode": ["flac"],
+   "decode": ["flac"],
+   "gettags": ["metaflac"],
+}
+
 format = "flac"
 
 # return a dictionary file of the metadata
