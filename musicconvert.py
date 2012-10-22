@@ -24,7 +24,11 @@ def pathescape(str):
 
 def convert_directory(directory):
   for root, dirs, files in os.walk(directory):
+    if os.path.basename(root).startswith("."):
+      continue
     for file in files:
+      if os.path.basename(file).startswith("."):
+        continue
       extension = os.path.splitext(file)[1][1:].lower()
       if (extension in SUPPORTED_EXTS):
         format = extension
