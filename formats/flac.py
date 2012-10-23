@@ -33,7 +33,7 @@ def getAudioStream(path):
    return p.stdout
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
-   encode_command = ["flac", "-f", "-s", "-8", "-", "-o", destination]
+   encode_command = ["flac", "--ignore-chunk-sizes", "-f", "-s", "-8", "-", "-o", destination]
    for x in metadata.items():
       encode_command.extend(["-T", string.join(x, "=")])
 

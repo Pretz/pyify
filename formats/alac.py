@@ -2,11 +2,14 @@
 
 import os
 import string
-import popen2
+import subprocess
 import sys
 from util import forkexec, copyfileobj
 
-required = { "encode": "ffmpeg", "decode": "ffmpeg" }
+required = {
+  "encode": ["ffmpeg"],
+  "decode": ["ffmpeg"]
+}
 format = "m4a"
 
 mapping = {
@@ -30,7 +33,6 @@ def getMetadata(path, _=None):
   except:
     sys.stderr.write("Warning: no MP4 support, please install mutagen")
     return dict()
-  print "Currently reading %s" % path
   track = MP4(path)
   tags = {}
   
@@ -48,9 +50,8 @@ def getMetadata(path, _=None):
 # return open file object with audio stream
 def getAudioStream(path):
   subargv = ["ffmpeg", "-v", "1", "-i", path, "-f", "wav", "-"]
-  (i, o) = os.popen2(subargv, 'b')
-  i.close()
-  return o
+  p = subprocess.Popen(subargv, stdout=subprocess.PIPE)
+  return p.stdout
 
 def encodeAudioStream(input_stream, destination, metadata=dict()):
   encode_command = ["ffmpeg", "-v", "1", "-i", "-", "-acodec", "alac", destination]
@@ -68,7 +69,6 @@ def tagOutputFile(path, tags):
     return
 
   track = MP4(path)
-  print "Tagging with %s" % tags
   for key, flag in mapping.iteritems():
     if flag == 'TRACKNUMBER':
       trackinfo = tags[flag].split("/")
@@ -83,8 +83,6 @@ def tagOutputFile(path, tags):
         track['disk'] = [(int(diskno), 0)]
     elif flag in tags:
       track[key] = tags[flag]
-    else:
-      print "not tagging %s=%s" % (key, flag)
   track.save()
 
   return

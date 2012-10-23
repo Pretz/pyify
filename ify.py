@@ -6,10 +6,9 @@ import os
 import sys
 import string
 import getopt
-import glob
-import imp
-import signal
 import shutil
+import pkgutil
+import importlib
 
 # Local imports into current namespace
 from util import *
@@ -18,6 +17,9 @@ SKIP_DOTFILES = True # If true, skips directories and files beginning with a dot
 
 # XXX: Global.
 FORMATS = dict()
+queue = list()
+jobs_running = 0 # XXX
+encoder_pids = dict() # XXX
 
 def process_file(path):
    basename, ext = os.path.splitext(path)
@@ -34,13 +36,35 @@ def process_file(path):
          ify_warn("Skipping %s: not specified in --convert-formats!",
             os.path.basename(path))
          return 1
-
-      process_audio_file(path, os.path.join(prefs["destination"],
-                         os.path.splitext(basename)[0] + "." + prefs["format"]))
+      destination = destination_path(path, prefs["destination"], ext)
+      process_audio_file(path, destination)
    elif ext == "m3u":
       process_playlist(path)
    else:
       ify_print("Error, unsupported file format \"%s\"", ext)
+
+def destination_path(input_file, destination, input_format):
+   if prefs['filename_format'] and input_format in FORMATS:
+      metadata = FORMATS[input_format].getMetadata(input_file)
+      dest_name = prefs['filename_format']
+      for replacement in ('title', 'artist', 'album', 'tracknumber', 'year'):
+         replacement_key = replacement.upper()
+         # 'YEAR' is called 'DATE' in the internal metadata format
+         if replacement_key == 'YEAR':
+            replacement_key = 'DATE'
+         token = '%%%s%%' % replacement
+         # Hack to prepend 0 to single digit track numbers
+         if replacement == 'tracknumber' and len(metadata[replacement_key]) == 1:
+            metadata[replacement_key] = '0' + str(metadata[replacement_key])
+         if replacement_key in metadata and token in dest_name:
+            dest_name = dest_name.replace(token, metadata[replacement_key])
+      dest_dir = os.path.dirname(os.path.join(destination, dest_name))
+      if not os.path.exists(dest_dir):
+         os.makedirs(dest_dir)
+      return os.path.join(destination, dest_name + "." + prefs["format"])
+   else:
+      basename = os.path.basename(input_file)
+      return os.path.join(destination, os.path.splitext(basename)[0] + "." + prefs["format"])
 
 def run_encode_queue():
    global jobs_running, encoder_pids
@@ -75,7 +99,7 @@ def process_audio_file(from_path, to_path):
    if not prefs["force"]:
       # [6] is filesize in bytes
       if os.path.isfile(to_path) and os.stat(to_path)[6] > 0:
-         ify_print("[up-to-date] %s", to_path)
+         ify_print(u"[up-to-date] %s", to_path)
          return
 
       old_ext = os.path.splitext(from_path)[1][1:]
@@ -89,8 +113,8 @@ def process_audio_file(from_path, to_path):
 
 # format is already covered
 def process_audio_file_real(from_path, to_path):
-   ''' Does no more and no less than taking the file in from_path,
-       using its extension to determine its file type, and converting
+   '''Does no more and no less than taking the file in from_path,
+      using its extension to determine its file type, and converting
       it to the format specified in the eponymous variable to the file
       specified in to_path.
 
@@ -98,9 +122,12 @@ def process_audio_file_real(from_path, to_path):
       existing file if it's larger than 0 bytes, unless --force is
       specified. '''
 
-   old_ext = os.path.splitext(from_path)[1][1:]
+   old_ext = os.path.splitext(from_path)[1][1:].lower()
 
-   ify_print("[%s->%s] %s", old_ext, prefs["format"], from_path)
+   if prefs["filename_format"]:
+      ify_print("[%s->%s] %s -> %s", old_ext, prefs["format"], from_path, to_path)
+   else:
+      ify_print("[%s->%s] %s", old_ext, prefs["format"], from_path)
 
    decode_plugin = FORMATS[old_ext]
    for toolCheck in ('decode', 'gettags'):
@@ -137,7 +164,7 @@ def process_dir(path, prefix=""):
    containing_dir = os.path.basename(path) # current toplevel path
    if SKIP_DOTFILES and containing_dir.startswith("."):
       ify_print("Skipping %s", path)
-   return;
+      return
    target_dir = os.path.join(prefs["destination"], prefix, containing_dir)
 
    ify_print("[directory] %s" % target_dir)
@@ -162,11 +189,17 @@ def process_dir(path, prefix=""):
       if os.path.isdir(file_fullpath):
          process_dir(file_fullpath, os.path.join(prefix, containing_dir))
       elif os.path.isfile(file_fullpath):
-         (basename, ext) = os.path.splitext(file)
+         basename, ext = os.path.splitext(file)
+         ext = ext[1:].lower()
          if SKIP_DOTFILES and basename.startswith("."):
             continue
-         if ext[1:] in FORMATS and check_want_convert(ext[1:]):
-            process_audio_file(file_fullpath, os.path.join(prefs["destination"], prefix, containing_dir, os.path.splitext(file)[0] + "." + prefs["format"]))
+         if ext in FORMATS and check_want_convert(ext):
+            if prefs['filename_format']:
+               destination = destination_path(file_fullpath, prefs["destination"], ext)
+            else:
+               destination = destination_path(file_fullpath, os.path.join(prefs["destination"],
+                  prefix, containing_dir), ext)
+            process_audio_file(file_fullpath, destination)
 
 def process(arg):
    if os.path.isfile(arg):
@@ -187,6 +220,9 @@ def usage():
    options:
       -h or --help                  this message
       -d or --destination=PATH      path to output directory
+      --filename-format             optional format for destination filename and directory.
+                                    The following tags will be expanded based on each file's metadata:
+                                    %album%, %artist%, %title%, %tracknumber%, %year%
       --convert-formats=FMT,FMT2..  only select files in FMT for conversion
       -o FMT or --format=FMT        convert files to this format
       -f or --force                 convert even if output file is already
@@ -195,7 +231,6 @@ def usage():
       -q or --quiet                 don't print any output
       --delete                      delete originals after converting
       --dry-run                     don't do anything, just print actions"""
-
 # uses gnu_getopts...there's also a realllllly nifty optparse module
 # lets you specify actions, default values, argument types, etc,
 # but this was easier on my brain at 12:00AM wednesday night
@@ -206,13 +241,15 @@ prefs = { 'destination': os.getcwd(),
                 'quiet': False,
                 'delete': False,
                 'dry_run': False,
-                'plugin_dir': os.path.join(sys.path[0], "formats"),
+                'filename_format': None,
+                'plugin_dir': 'formats',
                 'concurrency': 1 }
 
 def main(argv):
    shortargs = "hd:o:fqj:"
    longargs  = ["help",
                 "destination=",
+                "filename-format=",
                 "convert-formats=",
                 "format=",
                 "force",
@@ -229,6 +266,8 @@ def main(argv):
          sys.exit(0)
       if option == "--destination" or option == "-d":
          prefs['destination'] = arg
+      elif option == '--filename-format':
+         prefs['filename_format'] = arg
       elif option == "-j":
          prefs['concurrency'] = int(arg)
       elif option == "--convert-formats":
@@ -255,21 +294,11 @@ def main(argv):
       raise getopt.GetoptError("One or more input files does not exist!")
 
    # build FORMATS data structure
-   for path in os.listdir(prefs["plugin_dir"]):
-      path = os.path.join(prefs["plugin_dir"], path)
-      if os.path.isfile(path):
-         name, ext = os.path.splitext(os.path.basename(path))
-         file = open(path, "r")
-         if ext == ".py":
-            # ify_print ("Loading module %s...", name)
-            plugin = imp.load_source(name, path, file)
-            FORMATS[plugin.format] = plugin
-         elif ext == ".pyc":
-            pass
-         else:
-            ify_print("Can't load plugin %s, bad suffix \"%s\"", path,
-                  ext)
-         file.close()
+   plugin_package = __import__(prefs["plugin_dir"])
+   for importer, name, ispkg in pkgutil.iter_modules(plugin_package.__path__):
+      # ify_print ("Loading module %s...", name)
+      plugin = importlib.import_module(plugin_package.__name__ + '.' + name)
+      FORMATS[plugin.format] = plugin
    if not prefs['format'] in FORMATS:
       raise getopt.GetoptError("Format must be one of: %s" %
             ', '.join(FORMATS.keys()))
