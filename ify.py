@@ -4,7 +4,6 @@
 import time
 import os
 import sys
-import string
 import getopt
 import shutil
 import pkgutil
@@ -12,8 +11,6 @@ import importlib
 
 # Local imports into current namespace
 from util import *
-
-SKIP_DOTFILES = True # If true, skips directories and files beginning with a dot
 
 # XXX: Global.
 FORMATS = dict()
@@ -24,7 +21,7 @@ encoder_pids = dict() # XXX
 def process_file(path):
    basename, ext = os.path.splitext(path)
    basename = os.path.basename(path)
-   if SKIP_DOTFILES and basename.startswith("."):
+   if not prefs['include_dotfiles'] and basename.startswith("."):
       ify_print("Skipping %s", basename)
       return
    ext = ext[1:].lower()
@@ -36,7 +33,7 @@ def process_file(path):
          ify_warn("Skipping %s: not specified in --convert-formats!",
             os.path.basename(path))
          return 1
-      destination = destination_path(path, prefs["destination"], ext)
+      destination = destination_path(path, prefs['destination'], ext)
       process_audio_file(path, destination)
    elif ext == "m3u":
       process_playlist(path)
@@ -162,10 +159,10 @@ def process_playlist(path):
 
 def process_dir(path, prefix=""):
    containing_dir = os.path.basename(path) # current toplevel path
-   if SKIP_DOTFILES and containing_dir.startswith("."):
+   if not prefs['include_dotfiles'] and containing_dir.startswith("."):
       ify_print("Skipping %s", path)
       return
-   target_dir = os.path.join(prefs["destination"], prefix, containing_dir)
+   target_dir = os.path.join(prefs['destination'], prefix, containing_dir)
 
    ify_print("[directory] %s" % target_dir)
 
@@ -191,13 +188,13 @@ def process_dir(path, prefix=""):
       elif os.path.isfile(file_fullpath):
          basename, ext = os.path.splitext(file)
          ext = ext[1:].lower()
-         if SKIP_DOTFILES and basename.startswith("."):
+         if not prefs['include_dotfiles'] and basename.startswith("."):
             continue
          if ext in FORMATS and check_want_convert(ext):
             if prefs['filename_format']:
-               destination = destination_path(file_fullpath, prefs["destination"], ext)
+               destination = destination_path(file_fullpath, prefs['destination'], ext)
             else:
-               destination = destination_path(file_fullpath, os.path.join(prefs["destination"],
+               destination = destination_path(file_fullpath, os.path.join(prefs['destination'],
                   prefix, containing_dir), ext)
             process_audio_file(file_fullpath, destination)
 
@@ -225,8 +222,8 @@ def usage():
                                     %album%, %artist%, %title%, %tracknumber%, %year%
       --convert-formats=FMT,FMT2..  only select files in FMT for conversion
       -o FMT or --format=FMT        convert files to this format
-      -f or --force                 convert even if output file is already
-                                     present
+      -a or --include-dotfiles      include files beginning with '.' when looking for files to convert
+      -f or --force                 convert even if output file is already present
       -j N                          runs N encoding jobs at once
       -q or --quiet                 don't print any output
       --delete                      delete originals after converting
@@ -237,6 +234,7 @@ def usage():
 prefs = { 'destination': os.getcwd(),
                 'convert_formats': None,
                 'format': 'wav',
+                'include_dotfiles': False,
                 'force': False,
                 'quiet': False,
                 'delete': False,
@@ -246,11 +244,12 @@ prefs = { 'destination': os.getcwd(),
                 'concurrency': 1 }
 
 def main(argv):
-   shortargs = "hd:o:fqj:"
+   shortargs = "hd:o:afqj:"
    longargs  = ["help",
                 "destination=",
                 "filename-format=",
                 "convert-formats=",
+                "include-dotfiles",
                 "format=",
                 "force",
                 "quiet",
@@ -274,6 +273,8 @@ def main(argv):
          prefs['convert_formats'] = arg.split(",")
       elif option == "--format" or option == "-o":
          prefs['format'] = arg
+      elif option == "--include-dotfiles" or option == '-a':
+         prefs['include_dotfiles'] = True
       elif option == "--force" or option == "-f":
          prefs['force'] = True
       elif option == "--quiet" or option == "-q":

@@ -1,10 +1,8 @@
 """apple lossless module for pyify"""
 
-import os
-import string
 import subprocess
 import sys
-from util import forkexec, copyfileobj
+from util import forkexec
 
 required = {
   "encode": ["ffmpeg"],
