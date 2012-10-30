@@ -292,6 +292,7 @@ def main(argv):
    if len(args) == 0:
       raise getopt.GetoptError("No input files")
    elif False in [os.path.exists(file) for file in args]:
+      print "Missing: %s" % args
       raise getopt.GetoptError("One or more input files does not exist!")
 
    # build FORMATS data structure
